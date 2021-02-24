@@ -9,9 +9,58 @@ import 'package:firebase_storage/firebase_storage.dart';
 import 'package:firebase_database/firebase_database.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/services.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
 
 List<CameraDescription> cameras;
 final databaseReference = FirebaseDatabase.instance.reference();
+
+class MessageHandler extends StatefulWidget {
+  @override
+  _MessageHandlerState createState() => _MessageHandlerState();
+}
+
+class _MessageHandlerState extends State<MessageHandler> {
+  final FirebaseMessaging _fcm = FirebaseMessaging();
+
+  @override
+  void initState() {
+    super.initState();
+
+    _fcm.configure(
+      onMessage: (Map<String, dynamic> message) async {
+        print("onMessage: $message");
+        showDialog(
+          context: context,
+          builder: (context) => AlertDialog(
+            content: ListTile(
+              title: Text(message['notification']['title']),
+              subtitle: Text(message['notification']['body']),
+            ),
+            actions: <Widget>[
+              FlatButton(
+                child: Text('Ok'),
+                onPressed: () => Navigator.of(context).pop(),
+              ),
+            ],
+          ),
+        );
+      },
+      onLaunch: (Map<String, dynamic> message) async {
+        print("onLaunch: $message");
+        // TODO optional
+      },
+      onResume: (Map<String, dynamic> message) async {
+        print("onResume: $message");
+        // TODO optional
+      },
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return null;
+  }
+}
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -41,9 +90,7 @@ class _MyHomePageState extends State<MyHomePage> {
   Future<void> _initializeControllerFuture;
   String list;
   final whatAreYouThinkingController = TextEditingController();
-  final usernameController = TextEditingController(
-    text: "Unknown"
-  );
+  final usernameController = TextEditingController(text: "Unknown");
 
   @override
   void initState() {
@@ -240,7 +287,8 @@ class _MyHomePageState extends State<MyHomePage> {
           }
         });
         if (t != null) {
-          insideImagesList.add(Post(id: int.parse(i), author: a, type: t, link: l));
+          insideImagesList
+              .add(Post(id: int.parse(i), author: a, type: t, link: l));
         }
       });
     });
@@ -251,7 +299,7 @@ class _MyHomePageState extends State<MyHomePage> {
     insideImagesList = holder.reversed.toList();
     setState(() {
       imagesList = insideImagesList;
-      for (int i = 0; i < imagesList.length; i++){
+      for (int i = 0; i < imagesList.length; i++) {
         print(imagesList[i].link);
       }
     });
@@ -479,7 +527,8 @@ class _MyHomePageState extends State<MyHomePage> {
                                       MaterialPageRoute(
                                         builder: (context) =>
                                             ConfirmPictureScreen(
-                                          possibleId: imagesList.length.toString(),
+                                          possibleId:
+                                              imagesList.length.toString(),
                                           author: usernameController.text,
                                           imagePath: image?.path,
                                         ),
@@ -529,7 +578,8 @@ class ConfirmPictureScreen extends StatelessWidget {
   final String possibleId;
   final String author;
   final String imagePath;
-  const ConfirmPictureScreen({Key key, this.possibleId, this.author, this.imagePath})
+  const ConfirmPictureScreen(
+      {Key key, this.possibleId, this.author, this.imagePath})
       : super(key: key);
 
   @override
@@ -580,7 +630,10 @@ class ConfirmPictureScreen extends StatelessWidget {
                           Random random = new Random();
                           var snapshot = await _firebaseStorage
                               .ref()
-                              .child('images/' + id + " " + random.nextInt(1000).toString())
+                              .child('images/' +
+                                  id +
+                                  " " +
+                                  random.nextInt(1000).toString())
                               .putFile(file);
                           var downloadUrl = await snapshot.ref.getDownloadURL();
                           DatabaseReference imagesRef =
@@ -625,12 +678,12 @@ class Post {
   Post({this.id, this.author, this.type, this.link});
 }
 
-Future<String> getListLenght() async{
+Future<String> getListLenght() async {
   int i = 0;
   await databaseReference.once().then((DataSnapshot snapshot) {
-      snapshot.value["images"].forEach((key, value) {
-        i++;
-      });
+    snapshot.value["images"].forEach((key, value) {
+      i++;
+    });
   });
   return i.toString();
 }
