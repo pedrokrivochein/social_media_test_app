@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:io';
 import 'dart:convert';
+import 'dart:math';
 
 import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
@@ -40,6 +41,9 @@ class _MyHomePageState extends State<MyHomePage> {
   Future<void> _initializeControllerFuture;
   String list;
   final whatAreYouThinkingController = TextEditingController();
+  final usernameController = TextEditingController(
+    text: "Unknown"
+  );
 
   @override
   void initState() {
@@ -109,7 +113,7 @@ class _MyHomePageState extends State<MyHomePage> {
                           ],
                         ),
                       ),
-                      readData()
+                      updateFeed()
                     ],
                   ),
                   cameraTab(),
@@ -149,6 +153,17 @@ class _MyHomePageState extends State<MyHomePage> {
                               vertical: 5.0, horizontal: 0.0)),
                       SizedBox(
                         height: 20,
+                      ),
+                      Container(
+                        color: Colors.white,
+                        width: double.infinity,
+                        height: 40,
+                        margin: EdgeInsets.symmetric(
+                            vertical: 10.0, horizontal: 20.0),
+                        child: TextField(
+                          controller: usernameController,
+                          style: TextStyle(fontSize: 20),
+                        ),
                       ),
                       FlatButton(
                         color: Colors.white,
@@ -208,12 +223,14 @@ class _MyHomePageState extends State<MyHomePage> {
     List<Post> insideImagesList = [];
 
     await databaseReference.once().then((DataSnapshot snapshot) {
-      print('Data : ${snapshot.value}');
       snapshot.value["images"].forEach((key, value) {
-        var i, t, l;
+        var i, a, t, l;
         value.forEach((k, v) {
           if (k == "id") {
             i = v;
+          }
+          if (k == "author") {
+            a = v;
           }
           if (k == "type") {
             t = v;
@@ -223,24 +240,25 @@ class _MyHomePageState extends State<MyHomePage> {
           }
         });
         if (t != null) {
-          print("Id: ${i} Type: ${t} Link: ${l}");
-          insideImagesList.add(Post(id: int.parse(i), type: t, link: l));
+          insideImagesList.add(Post(id: int.parse(i), author: a, type: t, link: l));
         }
       });
     });
     List<Post> holder = List<Post>(insideImagesList.length);
-    for(int i = 0; i < insideImagesList.length; i++){
+    for (int i = 0; i < insideImagesList.length; i++) {
       holder[insideImagesList[i].id] = insideImagesList[i];
     }
     insideImagesList = holder.reversed.toList();
-    print(insideImagesList[0].type);
     setState(() {
       imagesList = insideImagesList;
+      for (int i = 0; i < imagesList.length; i++){
+        print(imagesList[i].link);
+      }
     });
     return null;
   }
 
-  Widget readData() {
+  Widget updateFeed() {
     var size = MediaQuery.of(context).size.width;
     return Expanded(
       child: RefreshIndicator(
@@ -261,13 +279,17 @@ class _MyHomePageState extends State<MyHomePage> {
                       child: SizedBox(
                         height: 60.0,
                         child: new TextField(
+                          scrollController: ScrollController(
+                            initialScrollOffset: 0.0,
+                          ),
                           controller: whatAreYouThinkingController,
-                          maxLines: 100,
+                          maxLines: 3,
                           decoration: new InputDecoration(
                             border: InputBorder.none,
                             hintText: "O que você está pensando?",
                           ),
                           style: TextStyle(color: Colors.white),
+                          textAlignVertical: TextAlignVertical.center,
                         ),
                       ),
                     ),
@@ -280,25 +302,27 @@ class _MyHomePageState extends State<MyHomePage> {
                 child: FlatButton(
                   color: Colors.red[600],
                   onPressed: () async {
-                    //if(whatAreYouThinkingController.text != ""){
+                    if (whatAreYouThinkingController.text != "") {
                       try {
                         await _initializeControllerFuture;
                         DatabaseReference imagesRef =
                             databaseReference.child("images");
                         DatabaseReference newImagesRef = imagesRef.push();
-                        newImagesRef.set({
-                          "id": imagesList.length.toString(),
-                          "author": "Unknown",
-                          "Date": "Unkown",
-                          "type": "text",
-                          "link": whatAreYouThinkingController.text,
+                        getListLenght().then((value) {
+                          newImagesRef.set({
+                            "id": value,
+                            "author": usernameController.text,
+                            "Date": "Unkown",
+                            "type": "text",
+                            "link": whatAreYouThinkingController.text,
+                          });
+                          whatAreYouThinkingController.clear();
+                          updateImagesList();
                         });
                       } catch (e) {
                         print(e);
                       }
-                      whatAreYouThinkingController.clear();
-                      updateImagesList();
-                    //}
+                    }
                   },
                   child: Text("Enviar"),
                 ),
@@ -309,24 +333,75 @@ class _MyHomePageState extends State<MyHomePage> {
                         margin: EdgeInsets.symmetric(
                             vertical: 10.0, horizontal: 10.0),
                         width: size,
-                        height: size,
-                        child: Image.network(
-                          imagesList[i].link,
-                          fit: BoxFit.fitWidth,
-                        ),
+                        child: Column(children: <Widget>[
+                          Container(
+                            color: Colors.white,
+                            width: size,
+                            height: 40,
+                            padding: EdgeInsets.symmetric(
+                                vertical: 5.0, horizontal: 0.0),
+                            child: Row(children: <Widget>[
+                              CircleAvatar(
+                                backgroundColor: Colors.grey,
+                              ),
+                              Text(
+                                imagesList[i].author,
+                                style: TextStyle(
+                                  color: Colors.grey[800],
+                                  fontSize: 16,
+                                ),
+                              ),
+                            ]),
+                          ),
+                          Container(
+                            width: size,
+                            height: size,
+                            child: Image.network(
+                              imagesList[i].link,
+                              fit: BoxFit.fitWidth,
+                            ),
+                          )
+                        ]),
                       )
-                    : Card(
+                    : Container(
                         margin: EdgeInsets.symmetric(
                             vertical: 10.0, horizontal: 10.0),
                         color: Colors.white,
-                        child: Container(
-                          margin: EdgeInsets.symmetric(
-                              vertical: 10.0, horizontal: 10.0),
-                          child: Text(
-                            imagesList[i].link,
-                            style: TextStyle(),
-                          ),
-                        ),
+                        child: Column(
+                            mainAxisAlignment: MainAxisAlignment.start,
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: <Widget>[
+                              Container(
+                                color: Colors.white,
+                                width: size,
+                                height: 40,
+                                padding: EdgeInsets.symmetric(
+                                    vertical: 5.0, horizontal: 0.0),
+                                child: Row(children: <Widget>[
+                                  CircleAvatar(
+                                    backgroundColor: Colors.grey,
+                                  ),
+                                  Text(
+                                    imagesList[i].author,
+                                    style: TextStyle(
+                                      color: Colors.grey[800],
+                                      fontSize: 16,
+                                    ),
+                                  ),
+                                ]),
+                              ),
+                              Container(
+                                margin: EdgeInsets.symmetric(
+                                    vertical: 10.0, horizontal: 10.0),
+                                child: Text(
+                                  imagesList[i].link,
+                                  style: TextStyle(
+                                    color: Colors.black,
+                                    fontSize: 20,
+                                  ),
+                                ),
+                              ),
+                            ]),
                       ),
             ],
           ),
@@ -360,84 +435,86 @@ class _MyHomePageState extends State<MyHomePage> {
                     ),
                   ),
                 ),
-                Container(
-                  child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceAround,
+                Expanded(
+                  child: Column(
+                      mainAxisAlignment: MainAxisAlignment.end,
+                      crossAxisAlignment: CrossAxisAlignment.center,
                       children: <Widget>[
+                        Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceAround,
+                            children: <Widget>[
+                              SizedBox(
+                                width: 40,
+                                height: 40,
+                                child: FloatingActionButton(
+                                  heroTag: "1",
+                                  child: Icon(
+                                    Icons.camera_rear_outlined,
+                                    size: 20,
+                                  ),
+                                  // Provide an onPressed callback.
+                                  onPressed: () {
+                                    var controllerHolder = CameraController(
+                                        cameras[1], ResolutionPreset.medium);
+                                    setState(() {
+                                      controller = controllerHolder;
+                                    });
+                                    _initializeControllerFuture =
+                                        controller.initialize();
+                                    updateImagesList();
+                                  },
+                                ),
+                              ),
+                              FloatingActionButton(
+                                heroTag: "2",
+                                child: Icon(Icons.camera_alt),
+                                // Provide an onPressed callback.
+                                onPressed: () async {
+                                  try {
+                                    await _initializeControllerFuture;
+                                    final image =
+                                        await controller.takePicture();
+                                    Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder: (context) =>
+                                            ConfirmPictureScreen(
+                                          possibleId: imagesList.length.toString(),
+                                          author: usernameController.text,
+                                          imagePath: image?.path,
+                                        ),
+                                      ),
+                                    );
+                                  } catch (e) {
+                                    print(e);
+                                  }
+                                },
+                              ),
+                              SizedBox(
+                                width: 40,
+                                height: 40,
+                                child: FloatingActionButton(
+                                  heroTag: "3",
+                                  child: Icon(
+                                    Icons.camera_rear_outlined,
+                                    size: 20,
+                                  ),
+                                  // Provide an onPressed callback.
+                                  onPressed: () {
+                                    var controllerHolder = CameraController(
+                                        cameras[0], ResolutionPreset.medium);
+                                    setState(() {
+                                      controller = controllerHolder;
+                                    });
+                                    _initializeControllerFuture =
+                                        controller.initialize();
+                                    updateImagesList();
+                                  },
+                                ),
+                              ),
+                            ]),
                         SizedBox(
-                          width: 40,
-                          height: 40,
-                          child: FloatingActionButton(
-                            child: Icon(
-                              Icons.camera_rear_outlined,
-                              size: 20,
-                            ),
-                            // Provide an onPressed callback.
-                            onPressed: () {
-                              var controllerHolder = CameraController(
-                                  cameras[1], ResolutionPreset.medium);
-                              setState(() {
-                                controller = controllerHolder;
-                              });
-                              _initializeControllerFuture =
-                                  controller.initialize();
-                              updateImagesList();
-                            },
-                          ),
-                        ),
-                        FloatingActionButton(
-                          child: Icon(Icons.camera_alt),
-                          // Provide an onPressed callback.
-                          onPressed: () async {
-                            try {
-                              await _initializeControllerFuture;
-                              final image = await controller.takePicture();
-                              final _firebaseStorage = FirebaseStorage.instance;
-                              var file = File(image?.path);
-                              var snapshot = await _firebaseStorage
-                                  .ref()
-                                  .child(
-                                      'images/' + imagesList.length.toString())
-                                  .putFile(file);
-                              var downloadUrl =
-                                  await snapshot.ref.getDownloadURL();
-                              print("Download URL: " + downloadUrl);
-                              DatabaseReference imagesRef =
-                                  databaseReference.child("images");
-                              DatabaseReference newImagesRef = imagesRef.push();
-                              newImagesRef.set({
-                                "id": imagesList.length.toString(),
-                                "author": "Unknown",
-                                "Date": "Unkown",
-                                "type": "image",
-                                "link": downloadUrl,
-                              });
-                              updateImagesList();
-                            } catch (e) {
-                              print(e);
-                            }
-                          },
-                        ),
-                        SizedBox(
-                          width: 40,
-                          height: 40,
-                          child: FloatingActionButton(
-                            child: Icon(
-                              Icons.camera_rear_outlined,
-                              size: 20,
-                            ),
-                            // Provide an onPressed callback.
-                            onPressed: () {
-                              var controllerHolder = CameraController(
-                                  cameras[0], ResolutionPreset.medium);
-                              setState(() {
-                                controller = controllerHolder;
-                              });
-                              _initializeControllerFuture =
-                                  controller.initialize();
-                              updateImagesList();
-                            },
-                          ),
+                          height: 20,
                         ),
                       ]),
                 ),
@@ -448,9 +525,112 @@ class _MyHomePageState extends State<MyHomePage> {
   }
 }
 
+class ConfirmPictureScreen extends StatelessWidget {
+  final String possibleId;
+  final String author;
+  final String imagePath;
+  const ConfirmPictureScreen({Key key, this.possibleId, this.author, this.imagePath})
+      : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    var size = MediaQuery.of(context).size.width;
+    return Scaffold(
+      backgroundColor: Colors.red,
+      body: Stack(children: <Widget>[
+        Container(
+          width: size,
+          height: size,
+          child: ClipRect(
+            child: OverflowBox(
+              alignment: Alignment.center,
+              child: FittedBox(
+                fit: BoxFit.fitWidth,
+                child: Container(
+                  margin:
+                      EdgeInsets.symmetric(vertical: 10.0, horizontal: 10.0),
+                  width: size,
+                  height: size / 0.68,
+                  child:
+                      Image.file(File(imagePath)), // this is my CameraPreview
+                ),
+              ),
+            ),
+          ),
+        ),
+        Column(
+            mainAxisAlignment: MainAxisAlignment.end,
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: <Widget>[
+              Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceAround,
+                  children: <Widget>[
+                    FloatingActionButton(
+                      heroTag: "4",
+                      child: Icon(Icons.check_circle_outline),
+                      // Provide an onPressed callback.
+                      onPressed: () async {
+                        try {
+                          var id = possibleId;
+                          getListLenght().then((value) {
+                            id = value;
+                          });
+                          final _firebaseStorage = FirebaseStorage.instance;
+                          var file = File(imagePath);
+                          Random random = new Random();
+                          var snapshot = await _firebaseStorage
+                              .ref()
+                              .child('images/' + id + " " + random.nextInt(1000).toString())
+                              .putFile(file);
+                          var downloadUrl = await snapshot.ref.getDownloadURL();
+                          DatabaseReference imagesRef =
+                              databaseReference.child("images");
+                          DatabaseReference newImagesRef = imagesRef.push();
+                          newImagesRef.set({
+                            "id": id,
+                            "author": author,
+                            "Date": "Unkown",
+                            "type": "image",
+                            "link": downloadUrl,
+                          });
+                          Navigator.pop(context);
+                        } catch (e) {
+                          print(e);
+                        }
+                      },
+                    ),
+                    FloatingActionButton(
+                      heroTag: "5",
+                      child: Icon(Icons.cancel_outlined),
+                      // Provide an onPressed callback.
+                      onPressed: () {
+                        Navigator.pop(context);
+                      },
+                    ),
+                  ]),
+              SizedBox(
+                height: 20,
+              ),
+            ]),
+      ]),
+    );
+  }
+}
+
 class Post {
   int id;
+  String author;
   String type;
   String link;
-  Post({this.id, this.type, this.link});
+  Post({this.id, this.author, this.type, this.link});
+}
+
+Future<String> getListLenght() async{
+  int i = 0;
+  await databaseReference.once().then((DataSnapshot snapshot) {
+      snapshot.value["images"].forEach((key, value) {
+        i++;
+      });
+  });
+  return i.toString();
 }
