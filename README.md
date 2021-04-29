@@ -3,14 +3,14 @@
 #### SDK
 - Flutter
 
-#### Database
+#### Database | Banco de dados
 - Firebase
 
-#### Features
+#### Features | Funcionalidades
 - Feed.
 - Post pictures | Publicar fotos.
 - Post texts | Publicar textos.
-- 
+- Change username | Alterar nome de usuário.
 
 #### To-do
 - Post videos | Publicar videos.
