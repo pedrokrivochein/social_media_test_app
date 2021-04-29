@@ -11,8 +11,9 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/services.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 
-List<CameraDescription> cameras;
-final databaseReference = FirebaseDatabase.instance.reference();
+List<CameraDescription> cameras; //Lista de cameras do dispositivo.
+final databaseReference =
+    FirebaseDatabase.instance.reference(); //Referencia ao banco de dados.
 
 class MessageHandler extends StatefulWidget {
   @override
@@ -64,14 +65,15 @@ class _MessageHandlerState extends State<MessageHandler> {
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  cameras = await availableCameras();
+  cameras = await availableCameras(); //Pegar cameras disponiveis no celular.
   runApp(new MaterialApp(
     title: 'Social Media Test',
     theme: ThemeData(
       primarySwatch: Colors.red,
       visualDensity: VisualDensity.adaptivePlatformDensity,
     ),
-    home: MyHomePage(camera: cameras.first),
+    home: MyHomePage(
+        camera: cameras.first), //Passa o dado da camera para a interface.
   ));
 }
 
@@ -89,38 +91,37 @@ class _MyHomePageState extends State<MyHomePage> {
   CameraController controller;
   Future<void> _initializeControllerFuture;
   String list;
-  final whatAreYouThinkingController = TextEditingController();
-  final usernameController = TextEditingController(text: "Unknown");
+  final whatAreYouThinkingController =
+      TextEditingController(); //Texto em "O que voce esta pensando?".
+  final usernameController =
+      TextEditingController(text: "Unknown"); //Texto no nome de usuario.
 
   @override
   void initState() {
     super.initState();
 
     Firebase.initializeApp().whenComplete(() {
-      print("Completed");
+      print("Completed"); //Firebase iniciado com sucesso.
     });
 
-    updateImagesList();
-    // To display the current output from the camera,
-    // create a CameraController.
+    updateImagesList(); //Atualiza inicialmente a lista de items.
     controller = CameraController(
-      // Get a specific camera from the list of available cameras.
       widget.camera,
-      // Define the resolution to use.
       ResolutionPreset.medium,
     );
-    // Next, initialize the controller. This returns a Future.
-    _initializeControllerFuture = controller.initialize();
+    _initializeControllerFuture =
+        controller.initialize(); //Variavel controle da camera.
   }
 
   @override
   void dispose() {
-    // Dispose of the controller when the widget is disposed.
+    //Se livra do controle quando nao e mais necessario.
     controller.dispose();
     super.dispose();
   }
 
   Widget build(BuildContext context) {
+    //Desenha a interface.
     return DefaultTabController(
       length: 3,
       child: Scaffold(
@@ -265,34 +266,39 @@ class _MyHomePageState extends State<MyHomePage> {
     );
   }
 
+  //Atualizar a lista de imagens, puxar novas imagens do banco de dados.
   Future<Null> updateImagesList() async {
     refreshKey.currentState?.show();
     List<Post> insideImagesList = [];
 
     await databaseReference.once().then((DataSnapshot snapshot) {
+      // Se conecta ao banco de dados.
       snapshot.value["images"].forEach((key, value) {
-        var i, a, t, l;
+        //Recebe as novas imagens.
+        var i, a, t, l; //Id, Autor, Tipo e Link.
         value.forEach((k, v) {
-          if (k == "id") {
+          //Separa os tipos de variaveis.
+          if (k == "id")
             i = v;
-          }
-          if (k == "author") {
+          else if (k == "author")
             a = v;
-          }
-          if (k == "type") {
+          else if (k == "type")
             t = v;
-          }
-          if (k == "link") {
-            l = v;
-          }
+          else if (k == "link") l = v;
         });
+
         if (t != null) {
+          //Se o dado realmente for uma postagem, adicionar a lista de imagens.
           insideImagesList
               .add(Post(id: int.parse(i), author: a, type: t, link: l));
         }
       });
     });
-    List<Post> holder = List<Post>(insideImagesList.length);
+
+    List<Post> holder =
+        List<Post>(insideImagesList.length); //Variavel auxiliar.
+
+    //Reordenando as imagens (Mais recentes em cima).
     for (int i = 0; i < insideImagesList.length; i++) {
       holder[insideImagesList[i].id] = insideImagesList[i];
     }
@@ -306,6 +312,7 @@ class _MyHomePageState extends State<MyHomePage> {
     return null;
   }
 
+  //Atualizar e Desenhar o Feed.
   Widget updateFeed() {
     var size = MediaQuery.of(context).size.width;
     return Expanded(
@@ -349,6 +356,7 @@ class _MyHomePageState extends State<MyHomePage> {
                 color: Colors.red[600],
                 child: FlatButton(
                   color: Colors.red[600],
+                  //Postar texto.
                   onPressed: () async {
                     if (whatAreYouThinkingController.text != "") {
                       try {
@@ -356,6 +364,7 @@ class _MyHomePageState extends State<MyHomePage> {
                         DatabaseReference imagesRef =
                             databaseReference.child("images");
                         DatabaseReference newImagesRef = imagesRef.push();
+                        //Criar o JSON do texto, adicionar a lista de postagens.
                         getListLenght().then((value) {
                           newImagesRef.set({
                             "id": value,
@@ -365,7 +374,7 @@ class _MyHomePageState extends State<MyHomePage> {
                             "link": whatAreYouThinkingController.text,
                           });
                           whatAreYouThinkingController.clear();
-                          updateImagesList();
+                          updateImagesList(); //Atualizar lista apos postagem.
                         });
                       } catch (e) {
                         print(e);
@@ -457,6 +466,7 @@ class _MyHomePageState extends State<MyHomePage> {
     );
   }
 
+  //Interface da camera
   Widget cameraTab() {
     var size = MediaQuery.of(context).size.width;
     return Container(
@@ -476,8 +486,7 @@ class _MyHomePageState extends State<MyHomePage> {
                               vertical: 10.0, horizontal: 10.0),
                           width: size,
                           height: size / 0.68,
-                          child: CameraPreview(
-                              controller), // this is my CameraPreview
+                          child: CameraPreview(controller),
                         ),
                       ),
                     ),
@@ -516,12 +525,13 @@ class _MyHomePageState extends State<MyHomePage> {
                               FloatingActionButton(
                                 heroTag: "2",
                                 child: Icon(Icons.camera_alt),
-                                // Provide an onPressed callback.
+                                //Tirar foto
                                 onPressed: () async {
                                   try {
                                     await _initializeControllerFuture;
                                     final image =
                                         await controller.takePicture();
+                                    //Envia a foto tirada para a aba de confirmação.
                                     Navigator.push(
                                       context,
                                       MaterialPageRoute(
@@ -574,6 +584,7 @@ class _MyHomePageState extends State<MyHomePage> {
   }
 }
 
+//Aba de confirmação
 class ConfirmPictureScreen extends StatelessWidget {
   final String possibleId;
   final String author;
@@ -618,12 +629,12 @@ class ConfirmPictureScreen extends StatelessWidget {
                     FloatingActionButton(
                       heroTag: "4",
                       child: Icon(Icons.check_circle_outline),
-                      // Provide an onPressed callback.
+                      // Postar foto.
                       onPressed: () async {
                         try {
                           var id = possibleId;
                           getListLenght().then((value) {
-                            id = value;
+                            id = value; //ID da foto = Numero de postagens + 1
                           });
                           final _firebaseStorage = FirebaseStorage.instance;
                           var file = File(imagePath);
@@ -639,6 +650,7 @@ class ConfirmPictureScreen extends StatelessWidget {
                           DatabaseReference imagesRef =
                               databaseReference.child("images");
                           DatabaseReference newImagesRef = imagesRef.push();
+                          //Montar JSON da foto
                           newImagesRef.set({
                             "id": id,
                             "author": author,
@@ -670,6 +682,7 @@ class ConfirmPictureScreen extends StatelessWidget {
   }
 }
 
+//Dados da postagem
 class Post {
   int id;
   String author;
@@ -678,6 +691,7 @@ class Post {
   Post({this.id, this.author, this.type, this.link});
 }
 
+//Quantidade de postagens feitas
 Future<String> getListLenght() async {
   int i = 0;
   await databaseReference.once().then((DataSnapshot snapshot) {
